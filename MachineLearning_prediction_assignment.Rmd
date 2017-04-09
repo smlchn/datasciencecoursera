@@ -1,0 +1,59 @@
+---
+title: "Prediction_assignment_writeup_R"
+author: "Samuel Chen"
+date: "April 9, 2017"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#Predictions using Weight Lifting Exercise Dataset
+
+##Introduction
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+##Getting and Processing Dataset
+```{r}
+library(caret)
+library(readr)
+setwd("~/GitHub/Coursera data science/machine learning/dataset")
+pml_training <- read.csv("pml-training.csv", na.strings=c("NA","#DIV/0!",""), stringsAsFactors=FALSE)
+pml_testing <- read.csv("pml-testing.csv", na.strings=c("NA","#DIV/0!",""), stringsAsFactors=FALSE)
+dim(pml_testing)
+dim(pml_training)
+```
+Both training datasets contain 160 columns with training data sets having 19622 records while testing datasets having 20 records. The 'Classe' variable is the predictor of our model.
+```{r}
+training <- pml_training[,-c(1:6)]
+testing <- pml_testing[,-c(1:6)]
+test_data<- testing[,colSums(is.na(testing))<nrow(testing)]
+train_data <- training[,c("classe",names(test_data)[-54])] 
+```
+We removed the first 6 columns of datasets which does not represent exercise motion and columns that consist value 'NA', this is to reduce the noise to our model
+
+```{r}
+set.seed(123)
+train.indices <- createDataPartition(train_data$classe,p=0.6,list=F)
+train_dataset<- train_data[train.indices,]
+validate_dataset <- train_data[-train.indices,]
+dim(train_dataset)
+dim(validate_dataset)
+```
+Training dataset is partitioned into 2 parts which consist of 60% of the data and will be used to train the model, while 40% of data will be used as a validation set and output an out of sample estimate on the performance of our model
+
+##Machine Learning Model
+```{r}
+rf.fit<- train(classe~.,data=train_dataset,method='rf',proxy=TRUE)
+rf.fit
+```
+Random forest classifier is selected for this predictive model of activity recognition because the classifier produces highly accurate predictions and automatically selects important variables and is robust to correlated covariates and outliers.
+```{r}
+out_sample <- predict(rf.fit,validate_dataset)
+confusionMatrix (validate_dataset$classe,out_sample)
+```
+Validation dataset is now used to fit the random forest model to estimate its performance.
+The random forest model gives an estimated out of sample accuracy rate of 99.8% with a confidence interval of 99.65%,99.87%
+
+
+
